@@ -98,3 +98,57 @@ resource "aws_route" "test-igw-association" {
   destination_cidr_block    = "0.0.0.0/0"
   gateway_id     = aws_internet_gateway.test-igw.id
 }
+
+#creating security group with port 80 (http) and 22(ssh)
+
+resource "aws_security_group" "test-sec-group" {
+  name = "test-sec-group"
+  description = "Allow HTTP and SSH traffic"
+  vpc_id      = "${aws_vpc.vpc_prac.id}"
+
+#inbound traffic
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+#outbound traffic
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+ tags = {
+    Name = "test-sec-group"
+  } 
+}
+
+
+#creating key pair
+#private key
+resource "tls_private_key" "private-test-key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+resource "local_file" "local-test-key" {
+    content  = tls_private_key.test-private-key.private_key_pem
+    filename = "test_key"
+}
+
+#public key for ssh
+resource "aws_key_pair" "test-key" {
+  key_name   = var.pub-key-Name
+  public_key =  tls_private_key.test-private-key.public_key_openssh
+}
+
