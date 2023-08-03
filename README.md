@@ -18,16 +18,23 @@ Creating Internet gateway: (test-igw)
 #Associate with internet gateway with the public route table.
 (test-igw-association)
 
+
+
+#Creating Security groups with *port 80 and 22 opened for ingress.
+( test-sec-group )
+#creating key pair and ec2 iam role
+
+#provisioning 2 EC2 server with Ubuntu Free Tier
+Putting one in public subnet and one in private subnet
+( test-compute-1)
+( test-compute-2)
+
+#provisioning autoscaling group and load balancer 
+
+#provisioning elastic ip address
+
 #Creating NAT gateway.
 (test-Nat-gateway)
 
 #Associating with private route table.
-(test -Nat-association)
-
-#Creating Security groups with *port 80 and 22 opened for ingress.
-( test-sec-group )
-
-#provisioning 2 EC2 server with Ubuntu Free Tier
-Putting one in public subnet and one in private subnet
-( test-serve-1)
-( test-serve-2)
+(test-Nat-association)

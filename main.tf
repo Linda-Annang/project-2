@@ -8,9 +8,11 @@ resource "aws_vpc" "vpc_prac" {
   }
 }
 #provisioning 4 subnets with different cidr block specifications
+#putting each subnet in different availability zones to make resource highl available
 resource "aws_subnet" "test-public-sub1" {
   vpc_id     = aws_vpc.vpc_prac.id
   cidr_block = var.pub_cidr_block_1
+  availability_zone = "eu-west-2a"
 
   tags = {
     Name = var.pub_name1
@@ -21,6 +23,7 @@ resource "aws_subnet" "test-public-sub1" {
 resource "aws_subnet" "test-public-sub2" {
   vpc_id     = aws_vpc.vpc_prac.id
   cidr_block = var.pub_cidr_block_2
+  availability_zone = "eu-west-2b"
 
   tags = {
     Name = var.pub_name2
@@ -30,6 +33,7 @@ resource "aws_subnet" "test-public-sub2" {
 resource "aws_subnet" "test-priv-sub1" {
   vpc_id     = aws_vpc.vpc_prac.id
   cidr_block = var.priv_cidr_block_1
+  availability_zone = "eu-west-2c"
 
   tags = {
     Name = var.priv_name1
@@ -39,6 +43,7 @@ resource "aws_subnet" "test-priv-sub1" {
 resource "aws_subnet" "test-priv-sub2" {
   vpc_id     = aws_vpc.vpc_prac.id
   cidr_block = var.priv_cidr_block_2
+  availability_zone = "eu-west-2c"
 
   tags = {
     Name = var.priv_name2
@@ -136,19 +141,105 @@ resource "aws_security_group" "test-sec-group" {
 
 #creating key pair
 #private key
+##Creates a PEM (and OpenSSH) formatted private key
 resource "tls_private_key" "private-test-key" {
   algorithm = "RSA"
   rsa_bits  = 4096
 }
 
+#Generates a local file (on pc) with the given content
 resource "local_file" "local-test-key" {
-    content  = tls_private_key.test-private-key.private_key_pem
+    content  = tls_private_key.private-test-key.private_key_pem
     filename = "test_key"
 }
 
 #public key for ssh
 resource "aws_key_pair" "test-key" {
-  key_name   = var.pub-key-Name
-  public_key =  tls_private_key.test-private-key.public_key_openssh
+  key_name   = "test-key"
+  public_key =  tls_private_key.private-test-key.public_key_openssh
+}
+
+#creating iam roles for ec2 
+resource "aws_iam_role" "test-ec2-role" {
+  name = "test-ec2-role"
+
+  # Terraform's "jsonencode" function converts a Terraform expression result to valid JSON syntax.
+  #policy of AmazonEC2FullAccess from console
+  assume_role_policy = jsonencode({
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": "ec2:*",
+            "Effect": "Allow",
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "elasticloadbalancing:*",
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "cloudwatch:*",
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "autoscaling:*",
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "iam:CreateServiceLinkedRole",
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                    "iam:AWSServiceName": [
+                        "autoscaling.amazonaws.com",
+                        "ec2scheduled.amazonaws.com",
+                        "elasticloadbalancing.amazonaws.com",
+                        "spot.amazonaws.com",
+                        "spotfleet.amazonaws.com",
+                        "transitgateway.amazonaws.com"
+                    ]
+                }
+            }
+        }
+    ]
+})
+
+  tags = {
+    tag-key = "test-ec2-role"
+  }
+}
+
+#provisioning 2 free tier ec2 using ubuntu ami
+
+#putting this ec2 in the private subnet
+resource "aws_instance" "test-compute-1" {
+  ami           = "ami-0eb260c4d5475b901"        #picked free tier ubuntu id (eligible) from console
+  instance_type = "t2.micro"
+  vpc_security_group_ids = ["${aws_security_group.test-sec-group.id}"]
+  key_name = "${aws_key_pair.test-key.id}"
+  subnet_id     = "${aws_subnet.test-priv-sub1.id}"
+  
+   tags = {
+    Name = "test-compute-1"
+  }
+}
+
+#for the public
+resource "aws_instance" "test-compute-2" {
+  ami           = "ami-0eb260c4d5475b901"            #picked free tier ubuntu id (eligible) from console
+  instance_type = "t2.micro"
+  vpc_security_group_ids = ["${aws_security_group.test-sec-group.id}"]
+  key_name = "${aws_key_pair.test-key.id}"
+  subnet_id     = "${aws_subnet.test-public-sub1.id}"
+  associate_public_ip_address = true
+
+
+   tags = {
+    Name = var.instance-Name
+  }
 }
 
