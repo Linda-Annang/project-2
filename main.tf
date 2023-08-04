@@ -213,6 +213,11 @@ resource "aws_iam_role" "test-ec2-role" {
   }
 }
 
+#attaching iam role to instance profile
+resource "aws_iam_instance_profile" "test-profile" {
+  name = "test-profile"
+  role = aws_iam_role.test-ec2-role.id
+}
 #provisioning 2 free tier ec2 using ubuntu ami
 
 #putting this ec2 in the private subnet
@@ -220,8 +225,9 @@ resource "aws_instance" "test-compute-1" {
   ami           = "ami-0eb260c4d5475b901"        #picked free tier ubuntu id (eligible) from console
   instance_type = "t2.micro"
   vpc_security_group_ids = ["${aws_security_group.test-sec-group.id}"]
-  key_name = "${aws_key_pair.test-key.id}"
-  subnet_id     = "${aws_subnet.test-priv-sub1.id}"
+  key_name               = "${aws_key_pair.test-key.id}"
+  subnet_id              = "${aws_subnet.test-priv-sub1.id}"
+  iam_instance_profile   = aws_iam_instance_profile.test-profile.id
   
    tags = {
     Name = "test-compute-1"
@@ -233,8 +239,9 @@ resource "aws_instance" "test-compute-2" {
   ami           = "ami-0eb260c4d5475b901"            #picked free tier ubuntu id (eligible) from console
   instance_type = "t2.micro"
   vpc_security_group_ids = ["${aws_security_group.test-sec-group.id}"]
-  key_name = "${aws_key_pair.test-key.id}"
-  subnet_id     = "${aws_subnet.test-public-sub1.id}"
+  key_name               = "${aws_key_pair.test-key.id}"
+  subnet_id              = "${aws_subnet.test-public-sub1.id}"
+  iam_instance_profile   = aws_iam_instance_profile.test-profile.id
   associate_public_ip_address = true
 
 
