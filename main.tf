@@ -8,7 +8,7 @@ resource "aws_vpc" "vpc_prac" {
   }
 }
 #provisioning 4 subnets with different cidr block specifications
-#putting each subnet in different availability zones to make resource highl available
+#putting each subnet in different availability zones to make resource highly available
 resource "aws_subnet" "test-public-sub1" {
   vpc_id     = aws_vpc.vpc_prac.id
   cidr_block = var.pub_cidr_block_1
