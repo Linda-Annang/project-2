@@ -222,7 +222,7 @@ resource "aws_iam_instance_profile" "test-profile" {
 
 #putting this ec2 in the private subnet
 resource "aws_instance" "test-compute-1" {
-  ami           = "ami-0eb260c4d5475b901"        #picked free tier ubuntu id (eligible) from console
+  ami           = "ami-0eb260c4d5475b901"        #picked free tier ubuntu id (eligible) from console --Ubuntu Server 22.04 LTS (HVM), SSD Volume Type
   instance_type = "t2.micro"
   vpc_security_group_ids = ["${aws_security_group.test-sec-group.id}"]
   key_name               = "${aws_key_pair.test-key.id}"
@@ -236,7 +236,7 @@ resource "aws_instance" "test-compute-1" {
 
 #for the public
 resource "aws_instance" "test-compute-2" {
-  ami           = "ami-0eb260c4d5475b901"            #picked free tier ubuntu id (eligible) from console
+  ami           = "ami-0eb260c4d5475b901"            #picked free tier ubuntu id (eligible) from console--Ubuntu Server 22.04 LTS (HVM), SSD Volume Type
   instance_type = "t2.micro"
   vpc_security_group_ids = ["${aws_security_group.test-sec-group.id}"]
   key_name               = "${aws_key_pair.test-key.id}"
@@ -248,5 +248,32 @@ resource "aws_instance" "test-compute-2" {
    tags = {
     Name = var.instance-Name
   }
+}
+
+#provisioning elastic ip to associate with the nat gateway
+resource "aws_eip" "test-eip" {
+  instance = aws_instance.test-compute-1.id
+  vpc      = true
+  tags = {
+    Name = "test-eip"
+  }
+}
+
+#provisioning nat gateway
+resource "aws_nat_gateway" "test-Nat-gateway" {
+  allocation_id = aws_eip.test-eip.id
+  subnet_id     = aws_subnet.test-priv-sub1.id
+
+  tags = {
+    Name = "test-Nat-gateway"
+  }
+}
+
+
+#associating  the Nat gateway with the private route table
+resource "aws_route" "test-Nat-association" {
+  route_table_id            = aws_route_table.test-priv-route-table.id
+  destination_cidr_block    = "0.0.0.0/0"               #public Nat gateway
+  gateway_id                = aws_nat_gateway.test-Nat-gateway.id
 }
 

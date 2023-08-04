@@ -29,7 +29,6 @@ Putting one in public subnet and one in private subnet
 ( test-compute-1)
 ( test-compute-2)
 
-#provisioning autoscaling group and load balancer 
 
 #provisioning elastic ip address
 
@@ -38,3 +37,4 @@ Putting one in public subnet and one in private subnet
 
 #Associating with private route table.
 (test-Nat-association)
+
