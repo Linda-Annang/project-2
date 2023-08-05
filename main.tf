@@ -12,7 +12,7 @@ resource "aws_vpc" "vpc_prac" {
 resource "aws_subnet" "test-public-sub1" {
   vpc_id     = aws_vpc.vpc_prac.id
   cidr_block = var.pub_cidr_block_1
-  availability_zone = "eu-west-2a"
+  availability_zone = var.az-a
 
   tags = {
     Name = var.pub_name1
@@ -23,7 +23,7 @@ resource "aws_subnet" "test-public-sub1" {
 resource "aws_subnet" "test-public-sub2" {
   vpc_id     = aws_vpc.vpc_prac.id
   cidr_block = var.pub_cidr_block_2
-  availability_zone = "eu-west-2b"
+  availability_zone = var.az-b
 
   tags = {
     Name = var.pub_name2
@@ -33,7 +33,7 @@ resource "aws_subnet" "test-public-sub2" {
 resource "aws_subnet" "test-priv-sub1" {
   vpc_id     = aws_vpc.vpc_prac.id
   cidr_block = var.priv_cidr_block_1
-  availability_zone = "eu-west-2c"
+  availability_zone = var.az-c
 
   tags = {
     Name = var.priv_name1
@@ -43,7 +43,7 @@ resource "aws_subnet" "test-priv-sub1" {
 resource "aws_subnet" "test-priv-sub2" {
   vpc_id     = aws_vpc.vpc_prac.id
   cidr_block = var.priv_cidr_block_2
-  availability_zone = "eu-west-2c"
+  availability_zone = var.az-c
 
   tags = {
     Name = var.priv_name2
@@ -55,7 +55,7 @@ resource "aws_route_table" "test-pub-route-table" {
   vpc_id = aws_vpc.vpc_prac.id
 
   tags = {
-    Name = "test-pub-route-table"
+    Name = var.pub-rt
   }
 }
 
@@ -63,7 +63,7 @@ resource "aws_route_table" "test-priv-route-table" {
   vpc_id = aws_vpc.vpc_prac.id
 
   tags = {
-    Name = "test-priv-route-table"
+    Name = var.priv-rt
   }
 }
 
@@ -72,7 +72,7 @@ resource "aws_internet_gateway" "test-igw" {
   vpc_id = aws_vpc.vpc_prac.id
 
   tags = {
-    Name = "test-igw"
+    Name = var.igw
   }
 }
 
@@ -107,7 +107,7 @@ resource "aws_route" "test-igw-association" {
 #creating security group with port 80 (http) and 22(ssh)
 
 resource "aws_security_group" "test-sec-group" {
-  name = "test-sec-group"
+  name = var.sg-name
   description = "Allow HTTP and SSH traffic"
   vpc_id      = "${aws_vpc.vpc_prac.id}"
 
@@ -134,7 +134,7 @@ resource "aws_security_group" "test-sec-group" {
   }
 
  tags = {
-    Name = "test-sec-group"
+    Name = var.sg-name
   } 
 }
 
@@ -150,18 +150,18 @@ resource "tls_private_key" "private-test-key" {
 #Generates a local file (on pc) with the given content
 resource "local_file" "local-test-key" {
     content  = tls_private_key.private-test-key.private_key_pem
-    filename = "test_key"
+    filename = var.key-pair-name
 }
 
 #public key for ssh
 resource "aws_key_pair" "test-key" {
-  key_name   = "test-key"
+  key_name   = var.key-pair-name
   public_key =  tls_private_key.private-test-key.public_key_openssh
 }
 
 #creating iam roles for ec2 
 resource "aws_iam_role" "test-ec2-role" {
-  name = "test-ec2-role"
+  name = var.iam-role-name
 
   # Terraform's "jsonencode" function converts a Terraform expression result to valid JSON syntax.
   #policy of AmazonEC2FullAccess from console
@@ -208,9 +208,7 @@ resource "aws_iam_role" "test-ec2-role" {
     ]
 })
 
-  tags = {
-    tag-key = "test-ec2-role"
-  }
+  
 }
 
 #attaching iam role to instance profile
@@ -222,22 +220,24 @@ resource "aws_iam_instance_profile" "test-profile" {
 
 #putting this ec2 in the private subnet
 resource "aws_instance" "test-compute-1" {
-  ami           = "ami-0eb260c4d5475b901"        #picked free tier ubuntu id (eligible) from console --Ubuntu Server 22.04 LTS (HVM), SSD Volume Type
-  instance_type = "t2.micro"
+  #picked free tier ubuntu id (eligible) from console --Ubuntu Server 22.04 LTS (HVM), SSD Volume Type
+  ami           = var.ami-spec     
+  instance_type = var.instance-type
   vpc_security_group_ids = ["${aws_security_group.test-sec-group.id}"]
   key_name               = "${aws_key_pair.test-key.id}"
   subnet_id              = "${aws_subnet.test-priv-sub1.id}"
   iam_instance_profile   = aws_iam_instance_profile.test-profile.id
   
    tags = {
-    Name = "test-compute-1"
+    Name = var.compute-name1
   }
 }
 
 #for the public
 resource "aws_instance" "test-compute-2" {
-  ami           = "ami-0eb260c4d5475b901"            #picked free tier ubuntu id (eligible) from console--Ubuntu Server 22.04 LTS (HVM), SSD Volume Type
-  instance_type = "t2.micro"
+  #picked free tier ubuntu id (eligible) from console--Ubuntu Server 22.04 LTS (HVM), SSD Volume Type
+  ami           = var.ami-spec 
+  instance_type = var.instance-type
   vpc_security_group_ids = ["${aws_security_group.test-sec-group.id}"]
   key_name               = "${aws_key_pair.test-key.id}"
   subnet_id              = "${aws_subnet.test-public-sub1.id}"
@@ -246,7 +246,7 @@ resource "aws_instance" "test-compute-2" {
 
 
    tags = {
-    Name = var.instance-Name
+    Name = var.compute-name2
   }
 }
 
@@ -255,7 +255,7 @@ resource "aws_eip" "test-eip" {
   instance = aws_instance.test-compute-1.id
   vpc      = true
   tags = {
-    Name = "test-eip"
+    Name = var.eip-name
   }
 }
 
@@ -265,7 +265,7 @@ resource "aws_nat_gateway" "test-Nat-gateway" {
   subnet_id     = aws_subnet.test-priv-sub1.id
 
   tags = {
-    Name = "test-Nat-gateway"
+    Name = var.nat-gw
   }
 }
 
@@ -273,7 +273,7 @@ resource "aws_nat_gateway" "test-Nat-gateway" {
 #associating  the Nat gateway with the private route table
 resource "aws_route" "test-Nat-association" {
   route_table_id            = aws_route_table.test-priv-route-table.id
-  destination_cidr_block    = "0.0.0.0/0"               #public Nat gateway
+  destination_cidr_block    = var.nat-gw-cidr-block        #public Nat gateway
   gateway_id                = aws_nat_gateway.test-Nat-gateway.id
 }
 
