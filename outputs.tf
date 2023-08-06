@@ -46,7 +46,7 @@ output "private_compute_id" {
 
 output "private_compute_name" {
     description = "ec2 name of private subnet"
-    value = aws_instance.test-compute-1.name
+    value = aws_instance.test-compute-1.tags.*
 }
 
 #to get the instance machine image

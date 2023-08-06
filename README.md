@@ -18,6 +18,14 @@ Creating Internet gateway: (test-igw)
 #Associate with internet gateway with the public route table.
 (test-igw-association)
 
+#provisioning elastic ip address
+
+#Creating NAT gateway.
+(test-Nat-gateway)
+
+#Associating with private route table.
+(test-Nat-association)
+
 
 
 #Creating Security groups with *port 80 and 22 opened for ingress.
@@ -29,12 +37,4 @@ Putting one in public subnet and one in private subnet
 ( test-compute-1)
 ( test-compute-2)
 
-
-#provisioning elastic ip address
-
-#Creating NAT gateway.
-(test-Nat-gateway)
-
-#Associating with private route table.
-(test-Nat-association)
 

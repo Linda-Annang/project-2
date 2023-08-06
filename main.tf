@@ -104,6 +104,36 @@ resource "aws_route" "test-igw-association" {
   gateway_id     = aws_internet_gateway.test-igw.id
 }
 
+#provisioning elastic ip to associate with the nat gateway
+resource "aws_eip" "test-eip" {
+  vpc      = true
+
+  
+  tags = {
+    Name = var.eip-name
+  }
+}
+
+#provisioning nat gateway
+resource "aws_nat_gateway" "test-Nat-gateway" {
+  allocation_id = "${aws_eip.test-eip.id}"
+  subnet_id     = aws_subnet.test-priv-sub1.id
+
+  tags = {
+    Name = var.nat-gw
+  }
+}
+
+
+#associating  the Nat gateway with the private route table
+resource "aws_route" "test-Nat-association" {
+  route_table_id            = aws_route_table.test-priv-route-table.id
+  destination_cidr_block    = var.nat-gw-cidr-block        #public Nat gateway
+  gateway_id                = aws_nat_gateway.test-Nat-gateway.id
+}
+
+
+
 #creating security group with port 80 (http) and 22(ssh)
 
 resource "aws_security_group" "test-sec-group" {
@@ -159,13 +189,11 @@ resource "aws_key_pair" "test-key" {
   public_key =  tls_private_key.private-test-key.public_key_openssh
 }
 
-#creating iam roles for ec2 
-resource "aws_iam_role" "test-ec2-role" {
-  name = var.iam-role-name
+#creating an IAM policy
+resource "aws_iam_policy" "test-iam-policy" {
+  name = var.iam-policy-name
 
-  # Terraform's "jsonencode" function converts a Terraform expression result to valid JSON syntax.
-  #policy of AmazonEC2FullAccess from console
-  assume_role_policy = jsonencode({
+  policy = jsonencode({
     "Version": "2012-10-17",
     "Statement": [
         {
@@ -207,15 +235,46 @@ resource "aws_iam_role" "test-ec2-role" {
         }
     ]
 })
+}
+
+#creating iam roles for ec2 
+resource "aws_iam_role" "test-ec2-role" {
+  name = var.iam-role-name
+
+  # Terraform's "jsonencode" function converts a Terraform expression result to valid JSON syntax.
+  #policy of AmazonEC2FullAccess from console
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
 
   
 }
+
+# Attaching the IAM policy to the IAM role
+resource "aws_iam_policy_attachment" "test-role-policy-attachment" {
+  name = "test-role-policy-attachment"
+  policy_arn = aws_iam_policy.test-iam-policy.arn
+  roles       = [aws_iam_role.test-ec2-role.name]
+}
+
 
 #attaching iam role to instance profile
 resource "aws_iam_instance_profile" "test-profile" {
   name = "test-profile"
   role = aws_iam_role.test-ec2-role.id
 }
+
+
+
 #provisioning 2 free tier ec2 using ubuntu ami
 
 #putting this ec2 in the private subnet
@@ -250,30 +309,4 @@ resource "aws_instance" "test-compute-2" {
   }
 }
 
-#provisioning elastic ip to associate with the nat gateway
-resource "aws_eip" "test-eip" {
-  instance = aws_instance.test-compute-1.id
-  vpc      = true
-  tags = {
-    Name = var.eip-name
-  }
-}
-
-#provisioning nat gateway
-resource "aws_nat_gateway" "test-Nat-gateway" {
-  allocation_id = aws_eip.test-eip.id
-  subnet_id     = aws_subnet.test-priv-sub1.id
-
-  tags = {
-    Name = var.nat-gw
-  }
-}
-
-
-#associating  the Nat gateway with the private route table
-resource "aws_route" "test-Nat-association" {
-  route_table_id            = aws_route_table.test-priv-route-table.id
-  destination_cidr_block    = var.nat-gw-cidr-block        #public Nat gateway
-  gateway_id                = aws_nat_gateway.test-Nat-gateway.id
-}
 

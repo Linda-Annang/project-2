@@ -98,6 +98,11 @@ variable "key-pair-name" {
 }
 
 #IAM role
+variable "iam-policy-name" {
+  description = "IAM role policy name for ec2"
+  default     = "test-iam-policy"
+}
+
 variable "iam-role-name" {
   description = "IAM role name for ec2"
   default     = "test-ec2-role"
